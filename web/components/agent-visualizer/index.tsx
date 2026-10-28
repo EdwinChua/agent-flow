@@ -94,7 +94,15 @@ export function AgentVisualizer() {
   const sessionCacheRef = useRef<Map<string, { snapshot: ReturnType<typeof saveSnapshot>; eventCount: number }>>(new Map())
   const prevSelectedRef = useRef<string | null>(null)
   useLayoutEffect(() => {
+    if (bridge.selectedSessionId === null && prevSelectedRef.current !== null) {
+      // Bridge reset (panel reopened / relay restarted): cached snapshots are stale
+      sessionCacheRef.current.clear()
+      prevSelectedRef.current = null
+      return
+    }
     if (bridge.selectedSessionId && bridge.selectedSessionId !== prevSelectedRef.current) {
+      // Review/scrub state is per-component, not per-session: the incoming tab is restored live
+      setIsReviewing(false)
       // Save outgoing session state (if any)
       if (prevSelectedRef.current !== null) {
         sessionCacheRef.current.set(prevSelectedRef.current, {
@@ -209,6 +217,14 @@ export function AgentVisualizer() {
 
   const selectedAgent = selection.selectedAgentId ? agents.get(selection.selectedAgentId) : null
   const selectedConversation = selection.selectedAgentId ? (conversations.get(selection.selectedAgentId) || []) : []
+
+  // Session runtime — drives the assistant label (CLAUDE vs CODEX) in transcript panels
+  const sessionRuntime = useMemo(() => {
+    for (const a of agents.values()) {
+      if (a.runtime === 'codex') return 'codex' as const
+    }
+    return 'claude' as const
+  }, [agents])
 
   // Session-wide conversation (all agents merged chronologically)
   // Only compute when the transcript panel is visible to avoid O(n log n) sort every frame
@@ -327,6 +343,7 @@ export function AgentVisualizer() {
         agentName={selectedAgent?.name ?? ''}
         agentState={selectedAgent?.state ?? 'idle'}
         conversation={selectedConversation}
+        runtime={selectedAgent?.runtime ?? sessionRuntime}
         onClose={selection.clearAgent}
       />
 
@@ -378,6 +395,7 @@ export function AgentVisualizer() {
       <SessionTranscriptPanel
         visible={showTranscript}
         conversation={sessionConversation}
+        runtime={sessionRuntime}
         onClose={() => setShowTranscript(false)}
       />
 
