@@ -30,6 +30,8 @@ describe('collectSubagentJsonlFiles', () => {
     fs.writeFileSync(path.join(wfDir, 'agent-a134085130eaecaf1.jsonl'), '')
     // Sidecar/non-jsonl files must be ignored.
     fs.writeFileSync(path.join(wfDir, 'agent-a0fb14872db487d5b.meta.json'), '{}')
+    // Workflow run journal — a .jsonl file that is not an agent transcript.
+    fs.writeFileSync(path.join(wfDir, 'journal.jsonl'), '')
   })
 
   after(() => {
@@ -49,6 +51,11 @@ describe('collectSubagentJsonlFiles', () => {
     const found = collectSubagentJsonlFiles(root)
     assert.ok(found.every(f => f.endsWith('.jsonl')))
     assert.ok(!found.some(f => f.endsWith('.meta.json')))
+  })
+
+  it('ignores non-agent .jsonl files like the workflow journal', () => {
+    const found = collectSubagentJsonlFiles(root)
+    assert.ok(!found.some(f => path.basename(f) === 'journal.jsonl'))
   })
 
   it('returns an empty array for a missing directory instead of throwing', () => {

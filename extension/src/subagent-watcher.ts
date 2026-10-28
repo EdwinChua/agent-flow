@@ -54,9 +54,11 @@ function resolveNameFromMeta(jsonlPath: string, fallbackIndex: number): string {
   return generateSubagentFallbackName(agentId, fallbackIndex)
 }
 
-/** Recursively collect every *.jsonl transcript under a subagents directory.
+/** Recursively collect every agent-*.jsonl transcript under a subagents directory.
  *  Newer Claude Code nests Workflow subagents under
- *  `subagents/workflows/wf_<id>/agent-*.jsonl`, so a flat readdir misses them. */
+ *  `subagents/workflows/wf_<id>/agent-*.jsonl`, so a flat readdir misses them.
+ *  Other .jsonl files in the tree (e.g. the workflow `journal.jsonl`) are not
+ *  agent transcripts and would otherwise render as bogus subagent nodes. */
 export function collectSubagentJsonlFiles(dir: string): string[] {
   const found: string[] = []
   let entries: fs.Dirent[]
@@ -67,7 +69,7 @@ export function collectSubagentJsonlFiles(dir: string): string[] {
     const full = path.join(dir, entry.name)
     if (entry.isDirectory()) {
       found.push(...collectSubagentJsonlFiles(full))
-    } else if (entry.isFile() && entry.name.endsWith('.jsonl')) {
+    } else if (entry.isFile() && entry.name.startsWith('agent-') && entry.name.endsWith('.jsonl')) {
       found.push(full)
     }
   }
